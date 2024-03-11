@@ -1,0 +1,268 @@
+---
+title: "RAssignment"
+output: html_document
+date: "2024-03-07"
+---
+
+Data Inspection
+
+Download the files and into the git folder created and confirm the downloaded file by checking the content.
+
+```{r}
+file.show("snp_position.txt")
+file.show("fang_et_al_genotypes.txt")
+
+```
+
+Assign the files to objects to inspect the data
+
+```{r}
+
+genotypes <- read.table("fang_et_al_genotypes.txt", header = T,sep = "\t", stringsAsFactors = T)
+snps <- read.table("snp_position.txt", header = T, sep = "\t", stringsAsFactors = F)
+
+```
+
+Inspect the data in the files
+
+```{r}
+View(genotypes)
+dim(genotypes) 
+ncol(genotypes)
+nrow(genotypes)
+class(genotypes)
+object.size (genotypes)
+
+View(snps)
+dim(snps)
+ncol(snps)
+nrow(snps)
+class(snps)
+object.size(snps)
+
+```
+
+By inspecting the data in file fang_et_al_genotypes.txt(genotypes), I learned that the
+
+-   file has 2782 rows(objects) and 986 columns(variables)
+
+-   file size is 12163888 bytes
+
+-   file can be inspected as data frames
+
+By inspecting the data in file snp_position.txt(snps), I learned that the
+
+-   file has 983 rows (objects) and 15 columns(variables)
+
+-   file size is 327392 bytes
+
+-   file can be inspected as data frames
+
+
+Data Processing
+
+Load the required packages
+
+```{r}
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(tibble)
+```
+
+Extracted the groups for maize and teosinte and confirmed
+
+```{r}
+maizegenotypes <- filter(genotypes, Group %in% c("ZMMIL","ZMMLR","ZMMMR"))
+teosintegenotypes <- filter(genotypes, Group %in% c("ZMPBA","ZMPIL","ZMPJA"))
+
+summary(as.factor(maizegenotypes$Group))
+View(maizegenotypes)
+summary(as.factor(teosintegenotypes$Group))
+View(teosintegenotypes)
+
+```
+
+Removed the first three columns of maize and teosinte genotypes files to prepare them for transpose
+
+```{r}
+modifiedmaizegenotypes <- maizegenotypes[-(1:3)]
+modifiedteosintegenotypes <- teosintegenotypes[-(1:3)]
+
+
+View(modifiedmaizegenotypes)
+View(modifiedteosintegenotypes)
+
+```
+
+Transposed the files to prepare them for merging
+
+```{r}
+transposedmaize <- as.data.frame(t(modifiedmaizegenotypes))
+transposedteosinte <- as.data.frame(t(modifiedteosintegenotypes))
+
+
+View(transposedmaize)
+class(transposedmaize)
+dim(transposedmaize)
+
+View(transposedteosinte)
+class(transposedteosinte)
+dim(transposedteosinte)
+
+```
+
+Modified the snps by removing unwanted columns
+
+```{r}
+modifiedsnps <- snps[-(2)]
+View(modifiedsnps)
+class(modifiedsnps)
+```
+
+Combined the modified snps and transposed maize and teosinte
+
+```{r}
+mergedmaize <- cbind(modifiedsnps, transposedmaize)
+mergedteosinte <- cbind(modifiedsnps, transposedteosinte)
+
+View(mergedmaize)
+class(mergedmaize)
+dim(mergedmaize)
+
+View(mergedteosinte)
+class(mergedteosinte)
+dim(mergedteosinte)
+
+
+```
+
+
+Create maize and teosinte files with modified missing values 
+
+```{r}
+decreasemaize <- as.data.frame(apply(mergedmaize,2, function(x) gsub("\\?/\\?", "-/-", x)))
+decreaseteosinte <- as.data.frame(apply(mergedteosinte,2, function(x) gsub("\\?/\\?", "-/-", x)))
+
+View(decreasemaize)
+View(decreaseteosinte)
+
+
+```
+
+
+Create directories for maize and teosinte for decreasing and increasing orders
+
+```{r}
+dir.create('./incmaize') 
+dir.create('./decmaize')
+dir.create('./incteosinte')
+dir.create('./decteosinte')
+
+```
+
+
+Create files with increasing order of position for each chromosome both in maize and teosinte
+
+```{r}
+lapply(unique(mergedmaize$Chromosome), function(chrom_num) {
+  maizechrom <- mergedmaize %>% filter(Chromosome == chrom_num) %>% arrange(Position)
+  write.table(maizechrom,sep = "\t", file = paste("./incmaize/maizeinc", chrom_num, sep = "_"), quote = FALSE)
+})
+
+lapply(unique(mergedteosinte$Chromosome), function(chrom_num) {
+  teosintechrom <- mergedteosinte %>% filter(Chromosome == chrom_num) %>% arrange(Position)
+  write.table(teosintechrom,sep = "\t", file = paste("./incteosinte/teosinteinc", chrom_num, sep = "_"), quote = FALSE)
+})
+
+
+```
+
+Create files with decreasing order of position for each chromosome in both maize and teosinte
+
+```{r}
+lapply(unique(decreasemaize$Chromosome), function(chrom_num) {
+  maizechrom <- decreasemaize %>% filter(Chromosome == chrom_num) %>% arrange(Position)
+  write.table(maizechrom,sep = "\t", file = paste("./decmaize/maizedec", chrom_num, sep = "_"), quote = FALSE)
+})
+
+lapply(unique(decreaseteosinte$Chromosome), function(chrom_num) {
+  teosintechrom <- decreaseteosinte %>% filter(Chromosome == chrom_num) %>% arrange(Position)
+  write.table(teosintechrom,sep = "\t", file = paste("./decteosinte/teosintedec", chrom_num, sep = "_"), quote = FALSE)
+})
+
+```
+
+Data Visualization
+
+Prepared files for visualization
+```{r}
+modifiedgenotypes <- genotypes[-(1:3)]
+transposedgenotypes <- as.data.frame(t(modifiedgenotypes))
+modifiedsnps <- snps[-(2)]
+mergedfiles <- cbind(modifiedsnps, transposedgenotypes)
+cmergedfiles <- mergedfiles[-(1)]
+View(cmergedfiles)
+class(cmergedfiles)
+
+```
+
+
+The snps counts per chromosome visualization
+
+```{r}
+cmergedfiles$Chromosome <- factor(cmergedfiles$Chromosome, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "unknown", "multiple", "NA"))
+ggplot(cmergedfiles) + geom_bar(aes(x = Chromosome, fill = Chromosome)) + scale_fill_manual(values = rainbow(length(levels(cmergedfiles$Chromosome)))) + xlab("Chromosome") + ylab("AllTotal SNPs")
+
+mergedmaize$Chromosome <- factor(mergedmaize$Chromosome, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "unknown", "multiple", "NA"))
+ggplot(mergedmaize) + geom_bar(aes(x = Chromosome, fill = Chromosome)) + scale_fill_manual(values = rainbow(length(levels(mergedmaize$Chromosome)))) + xlab("Chromosome") + ylab("MaizeTotal SNPs")
+
+mergedteosinte$Chromosome <- factor(mergedteosinte$Chromosome, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "unknown", "multiple", "NA"))
+ggplot(mergedteosinte) + geom_bar(aes(x = Chromosome, fill = Chromosome)) + scale_fill_manual(values = rainbow(length(levels(mergedteosinte$Chromosome)))) +
+xlab("Chromosome") + ylab("TeasinteTotal SNPs")
+
+
+
+```
+
+Missing data and amount of heterozygosity visualization
+
+```{r}
+
+moreinfogenotypes <- genotypes %>% select(-JG_OTU) %>% pivot_longer( -Sample_ID: -Group, names_to = "SNP_ID", values_to = "Sequence")
+modifiedmoreinfogenotypes <- moreinfogenotypes %>% mutate(new_sequence = ifelse(Sequence %in% c("A/A", "T/T", "C/C", "G/G"), "Homozygous", ifelse(Sequence == "?/?", "Missing", "Heterozygous"))) 
+view(modifiedmoreinfogenotypes)
+ggplot(modifiedmoreinfogenotypes, aes(x = Sample_ID, fill = new_sequence)) + ggtitle("Heterozygosity Plot") + geom_bar(position = "fill") + theme_bw() + labs(x = "Sample ID", y = "Proportion")
+ggplot(modifiedmoreinfogenotypes, aes(x = Group , fill = new_sequence)) + geom_bar(position = "fill") + ggtitle("Heterozygosity by Groups ") +  theme_bw() + theme(axis.text.x = element_text(angle = 90))+ labs(y = "Proportion")
+
+
+```
+My own visualization
+
+
+```{r}
+
+mergedfiles <- transform(mergedfiles, gene_count = ave(Chromosome, Chromosome, FUN = length))
+
+
+mergedfiles$gene <- factor(mergedfiles$gene)
+
+
+ggplot(mergedfiles) +
+  geom_count(aes(x = Chromosome, y = gene_count)) +
+   xlab("Chromosomes") +
+  ylab("Count of Genes")
+
+
+```
+
+
+```{r}
+
+
+```
+
+```{r}
+
+```
