@@ -1,0 +1,34 @@
+general comments:
+
+OVerall, the code ran fine. It is very compact and so is very efficient. The visualizations are nice and easy to interpret for the most part. 
+
+Some points of improvement:
+The addition of some comments would be helpful in understanding the code a little better
+
+"mergedmaize <- cbind(modifiedsnps, transposedmaize)"
+You could use the join() function instead of cbind so that you could specify which field to join/merge the two dataframes based on
+
+Also, the merged files have the snp_ID as both the first column and the row names as well, so it is redundant. This is also carried over to your teosinte/zmays_increased/decreased files.
+
+A way to do this could be to add the the SNP_IDs as the first column for the transposedteosinte and zmays dataframes 
+And then
+use full_join(modifiedsnps, transposedmaize, by = "SNP_ID")
+
+In your mergerd files, I noticed that you retained the exta information from the snps file. From the instructions given for this assignment, I believe we were asked to format the output files such that the first three columns are SNP_ID, chromosome number, and position, and then from the 4th column onwards should be genotype information. The other columns like cdv_marker and such can be removed. To achieve this, clean the snps file by extracting the three columns "SNP_ID", "Chromosome", and "Position" before and then joining this cleaned snps file with the genotypes file.
+ 
+ Visualization:
+
+For the code where you classified the homozygous/heterozygous/missing:
+
+"modifiedmoreinfogenotypes <- moreinfogenotypes %>% mutate(new_sequence = ifelse(Sequence %in% c("A/A", "T/T", "C/C", "G/G"), "Homozygous", ifelse(Sequence == "?/?", "Missing", "Heterozygous"))) 
+view(modifiedmoreinfogenotypes)"
+
+I do not know if the dataset has any entries with one ? like x/? or ?/x
+But if it does, the code you used would classify those as heterozygous instead of missing. SO you could modify it like:
+
+modifiedmoreinfogenotypes <- moreinfogenotypes %>% mutate(new_sequence = 
+felse(Sequence %in% c("A/A", "T/T", "C/C", "G/G"), "Homozygous", ifelse(Sequence == c("A/C|A/G|A/T|C/A|C/G|C/T|G/A|G/C|G/T|T/A|T/C|T/"), "Heterozygous", "Missing"))) 
+
+For the last visualization, where you visualized count of genes chromosome, perhaps a bar plot may have been than a scatter plot. A scatter plot is better suited when the graph compares two continuous variables instead of one continuous and one discrete as in this case (chromosome number is discrete)
+
+
